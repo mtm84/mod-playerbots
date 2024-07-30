@@ -57,6 +57,16 @@ void MovementAction::CreateWp(Player* wpOwner, float x, float y, float z, float 
         wpCreature->SetObjectScale(0.5f);
 }
 
+void MovementAction::JumpTo(uint32 mapId, float x, float y, float z) {
+    float botZ = bot->GetPositionZ();
+    float speed = bot->GetSpeed(MOVE_RUN);
+    MotionMaster& mm = *bot->GetMotionMaster();
+    botAI->SetNextCheckDelay(1000);
+    mm.Clear();
+    mm.MoveJump(x, y, z, speed, speed, 1);
+    AI_VALUE(LastMovement&, "last movement").Set(mapId, x, y, z, bot->GetOrientation());
+}
+
 bool MovementAction::MoveNear(uint32 mapId, float x, float y, float z, float distance)
 {
     float angle = GetFollowAngle();
@@ -849,6 +859,21 @@ void MovementAction::UpdateMovementState()
 
     if (bot->IsFlying())
         bot->UpdateSpeed(MOVE_FLIGHT, true);
+
+    Transport* newTransport = bot->GetMap()->GetTransportForPos(bot->GetPhaseMask(), bot->GetPositionX(), bot->GetPositionY(), bot->GetPositionZ(), bot);
+    if (newTransport != bot->GetTransport())
+    {
+        LOG_DEBUG("playerbots", "Bot {} is on a transport", bot->GetName());
+
+        if (bot->GetTransport())
+            bot->GetTransport()->RemovePassenger(bot, true);
+
+        if (newTransport)
+            newTransport->AddPassenger(bot, true);
+
+        bot->StopMovingOnCurrentPos();
+    }
+
     // Temporary speed increase in group
     //if (botAI->HasRealPlayerMaster())
         //bot->SetSpeedRate(MOVE_RUN, 1.1f);
@@ -1555,7 +1580,7 @@ bool AvoidAoeAction::AvoidAuraWithDynamicObj()
         return false;
     }
     std::ostringstream name;
-    name << spellInfo->SpellName[sWorld->GetDefaultDbcLocale()]; // << "] (aura)";
+    name << spellInfo->SpellName[LOCALE_enUS]; // << "] (aura)";
     if (FleePosition(dynOwner->GetPosition(), radius)) {
         if (sPlayerbotAIConfig->tellWhenAvoidAoe && lastTellTimer < time(NULL) - 10) {
             lastTellTimer = time(NULL);
@@ -1613,7 +1638,7 @@ bool AvoidAoeAction::AvoidGameObjectWithDamage()
             continue;
         }
         std::ostringstream name;
-        name << spellInfo->SpellName[sWorld->GetDefaultDbcLocale()]; // << "] (object)";
+        name << spellInfo->SpellName[LOCALE_enUS]; // << "] (object)";
         if (FleePosition(go->GetPosition(), radius)) {
             if (sPlayerbotAIConfig->tellWhenAvoidAoe && lastTellTimer < time(NULL) - 10) {
                 lastTellTimer = time(NULL);
@@ -1662,7 +1687,7 @@ bool AvoidAoeAction::AvoidUnitWithDamageAura()
                             break;
                         }
                         std::ostringstream name;
-                        name << triggerSpellInfo->SpellName[sWorld->GetDefaultDbcLocale()]; //<< "] (unit)";
+                        name << triggerSpellInfo->SpellName[LOCALE_enUS]; //<< "] (unit)";
                         if (FleePosition(unit->GetPosition(), radius)) {
                             if (sPlayerbotAIConfig->tellWhenAvoidAoe && lastTellTimer < time(NULL) - 10) {
                                 lastTellTimer = time(NULL);

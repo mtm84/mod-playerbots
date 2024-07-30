@@ -14,6 +14,8 @@
 #include "PriestAiObjectContext.h"
 #include "MageAiObjectContext.h"
 #include "SharedDefines.h"
+#include "SpellInfo.h"
+#include "SpellMgr.h"
 #include "WarlockAiObjectContext.h"
 #include "WarriorAiObjectContext.h"
 #include "ShamanAiObjectContext.h"
@@ -109,9 +111,15 @@ std::map<uint8, uint32> AiFactory::GetPlayerSpecTabs(Player* bot)
             continue;
 
         uint32 const* talentTabIds = GetTalentTabPages(bot->getClass());
-        if (talentInfo->TalentTab == talentTabIds[0]) tabs[0]++;
-        if (talentInfo->TalentTab == talentTabIds[1]) tabs[1]++;
-        if (talentInfo->TalentTab == talentTabIds[2]) tabs[2]++;
+
+        const SpellInfo* spellInfo = sSpellMgr->GetSpellInfo(spellId);
+        int rank = spellInfo ? spellInfo->GetRank() : 1;
+        if (talentInfo->TalentTab == talentTabIds[0])
+            tabs[0] += rank;
+        if (talentInfo->TalentTab == talentTabIds[1])
+            tabs[1] += rank;
+        if (talentInfo->TalentTab == talentTabIds[2])
+            tabs[2] += rank;
     }
     return tabs;
 }
@@ -264,7 +272,7 @@ void AiFactory::AddDefaultCombatStrategies(Player* player, PlayerbotAI* const fa
 
     if (!player->InBattleground())
     {
-        engine->addStrategies("racials", "chat", "default", "cast time", "duel", "boost", nullptr);
+        engine->addStrategies("racials", "chat", "default", "cast time", "duel", "boost", "emote", nullptr);
     }
     if (sPlayerbotAIConfig->autoSaveMana) 
     {
@@ -548,7 +556,7 @@ void AiFactory::AddDefaultNonCombatStrategies(Player* player, PlayerbotAI* const
     if (!player->InBattleground())
     {
         nonCombatEngine->addStrategies("nc", "food", "chat", "follow",
-            "default", "quest", "loot", "gather", "duel", "buff", "mount", nullptr);
+            "default", "quest", "loot", "gather", "duel", "buff", "mount", "emote", nullptr);
     }
     if (sPlayerbotAIConfig->autoSaveMana) {
         nonCombatEngine->addStrategy("auto save mana");
@@ -636,7 +644,7 @@ void AiFactory::AddDefaultNonCombatStrategies(Player* player, PlayerbotAI* const
     // Battleground switch
     if (player->InBattleground() && player->GetBattleground())
     {
-        nonCombatEngine->addStrategies("nc", "chat", "default", "buff", "food", "mount", "pvp", "dps assist", "attack tagged", nullptr);
+        nonCombatEngine->addStrategies("nc", "chat", "default", "buff", "food", "mount", "pvp", "dps assist", "attack tagged", "emote", nullptr);
         nonCombatEngine->removeStrategy("custom::say");
         nonCombatEngine->removeStrategy("travel");
         nonCombatEngine->removeStrategy("rpg");
