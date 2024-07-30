@@ -16,15 +16,15 @@ bool ListQuestsAction::Execute(Event event)
     {
         ListQuests(QUEST_LIST_FILTER_INCOMPLETED);
     }
-    else if (event.getParam() == "all")
+    else if (event.getParam() == "all" || event.getParam() == "list" || event.getParam() == "show" || event.getParam() == "a" || event.getParam() == "l")
     {
         ListQuests(QUEST_LIST_FILTER_ALL);
     }
-    else if (event.getParam() == "travel")
+    else if (event.getParam() == "travel" || event.getParam() == "t")
     {
         ListQuests(QUEST_LIST_FILTER_ALL, QUEST_TRAVEL_DETAIL_SUMMARY);
     }
-    else if (event.getParam() == "travel detail")
+    else if (event.getParam() == "travel detail" event.getParam() == "td")
     {
         ListQuests(QUEST_LIST_FILTER_ALL, QUEST_TRAVEL_DETAIL_FULL);
     }
