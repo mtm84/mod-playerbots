@@ -2,12 +2,24 @@
 #define _PLAYERBOT_RAIDULDUARTRIGGERS_H
 
 #include "EventMap.h"
-#include "Trigger.h"
-#include "PlayerbotAIConfig.h"
 #include "GenericTriggers.h"
-#include "RaidUlduarScripts.h"
+#include "PlayerbotAIConfig.h"
 #include "RaidUlduarBossHelper.h"
+#include "Trigger.h"
 
 
+class FlameLeviathanOnVehicleTrigger : public Trigger
+{
+public:
+    FlameLeviathanOnVehicleTrigger(PlayerbotAI* ai) : Trigger(ai, "flame leviathan on vehicle") {}
+    bool IsActive() override;
+};
+
+class FlameLeviathanVehicleNearTrigger : public Trigger
+{
+public:
+    FlameLeviathanVehicleNearTrigger(PlayerbotAI* ai) : Trigger(ai, "flame leviathan vehicle near") {}
+    bool IsActive() override;
+};
 
 #endif
