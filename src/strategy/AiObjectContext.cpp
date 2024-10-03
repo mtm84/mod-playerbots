@@ -1,23 +1,36 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it and/or modify it under version 2 of the License, or (at your option), any later version.
+ * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it
+ * and/or modify it under version 2 of the License, or (at your option), any later version.
  */
 
 #include "AiObjectContext.h"
-#include "StrategyContext.h"
+
 #include "ActionContext.h"
 #include "ChatActionContext.h"
-#include "WorldPacketActionContext.h"
 #include "ChatTriggerContext.h"
-#include "TriggerContext.h"
-#include "SharedValueContext.h"
-#include "WorldPacketTriggerContext.h"
-#include "ValueContext.h"
 #include "Playerbots.h"
-#include "raids/RaidTriggerContext.h"
-#include "raids/RaidActionContext.h"
+#include "RaidIccActionContext.h"
+#include "RaidIccTriggerContext.h"
+#include "RaidUlduarTriggerContext.h"
+#include "RaidUlduarActionContext.h"
+#include "SharedValueContext.h"
+#include "StrategyContext.h"
+#include "TriggerContext.h"
+#include "ValueContext.h"
+#include "WorldPacketActionContext.h"
+#include "WorldPacketTriggerContext.h"
 #include "raids/RaidStrategyContext.h"
+#include "raids/blackwinglair/RaidBwlActionContext.h"
+#include "raids/blackwinglair/RaidBwlTriggerContext.h"
 #include "raids/naxxramas/RaidNaxxActionContext.h"
 #include "raids/naxxramas/RaidNaxxTriggerContext.h"
+#include "raids/moltencore/RaidMcActionContext.h"
+#include "raids/moltencore/RaidMcTriggerContext.h"
+#include "raids/aq20/RaidAq20ActionContext.h"
+#include "raids/aq20/RaidAq20TriggerContext.h"
+#include "dungeons/DungeonStrategyContext.h"
+#include "dungeons/wotlk/WotlkDungeonActionContext.h"
+#include "dungeons/wotlk/WotlkDungeonTriggerContext.h"
 
 AiObjectContext::AiObjectContext(PlayerbotAI* botAI) : PlayerbotAIAware(botAI)
 {
@@ -26,18 +39,29 @@ AiObjectContext::AiObjectContext(PlayerbotAI* botAI) : PlayerbotAIAware(botAI)
     strategyContexts.Add(new AssistStrategyContext());
     strategyContexts.Add(new QuestStrategyContext());
     strategyContexts.Add(new RaidStrategyContext());
-    
+    strategyContexts.Add(new DungeonStrategyContext());
+
     actionContexts.Add(new ActionContext());
     actionContexts.Add(new ChatActionContext());
     actionContexts.Add(new WorldPacketActionContext());
-    actionContexts.Add(new RaidActionContext());
+    actionContexts.Add(new RaidMcActionContext());
+    actionContexts.Add(new RaidBwlActionContext());
+    actionContexts.Add(new RaidAq20ActionContext());
     actionContexts.Add(new RaidNaxxActionContext());
+    actionContexts.Add(new RaidUlduarActionContext());
+    actionContexts.Add(new RaidIccActionContext());
+    actionContexts.Add(new WotlkDungeonUKActionContext());
 
     triggerContexts.Add(new TriggerContext());
     triggerContexts.Add(new ChatTriggerContext());
     triggerContexts.Add(new WorldPacketTriggerContext());
-    triggerContexts.Add(new RaidTriggerContext());
+    triggerContexts.Add(new RaidMcTriggerContext());
+    triggerContexts.Add(new RaidBwlTriggerContext());
+    triggerContexts.Add(new RaidAq20TriggerContext());
     triggerContexts.Add(new RaidNaxxTriggerContext());
+    triggerContexts.Add(new RaidUlduarTriggerContext());
+    triggerContexts.Add(new RaidIccTriggerContext());
+    triggerContexts.Add(new WotlkDungeonUKTriggerContext());
 
     valueContexts.Add(new ValueContext());
 
@@ -116,35 +140,20 @@ std::set<std::string> AiObjectContext::GetSiblingStrategy(std::string const name
     return strategyContexts.GetSiblings(name);
 }
 
-Trigger* AiObjectContext::GetTrigger(std::string const name)
-{
-    return triggerContexts.GetContextObject(name, botAI);
-}
+Trigger* AiObjectContext::GetTrigger(std::string const name) { return triggerContexts.GetContextObject(name, botAI); }
 
-Action* AiObjectContext::GetAction(std::string const name)
-{
-    return actionContexts.GetContextObject(name, botAI);
-}
+Action* AiObjectContext::GetAction(std::string const name) { return actionContexts.GetContextObject(name, botAI); }
 
 UntypedValue* AiObjectContext::GetUntypedValue(std::string const name)
 {
     return valueContexts.GetContextObject(name, botAI);
 }
 
-std::set<std::string> AiObjectContext::GetValues()
-{
-    return valueContexts.GetCreated();
-}
+std::set<std::string> AiObjectContext::GetValues() { return valueContexts.GetCreated(); }
 
-std::set<std::string> AiObjectContext::GetSupportedStrategies()
-{
-    return strategyContexts.supports();
-}
+std::set<std::string> AiObjectContext::GetSupportedStrategies() { return strategyContexts.supports(); }
 
-std::set<std::string> AiObjectContext::GetSupportedActions()
-{
-    return actionContexts.supports();
-}
+std::set<std::string> AiObjectContext::GetSupportedActions() { return actionContexts.supports(); }
 
 std::string const AiObjectContext::FormatValues()
 {
@@ -166,7 +175,4 @@ std::string const AiObjectContext::FormatValues()
     return out.str();
 }
 
-void AiObjectContext::AddShared(NamedObjectContext<UntypedValue>* sharedValues)
-{
-    valueContexts.Add(sharedValues);
-}
+void AiObjectContext::AddShared(NamedObjectContext<UntypedValue>* sharedValues) { valueContexts.Add(sharedValues); }

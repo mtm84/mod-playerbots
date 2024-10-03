@@ -2,22 +2,44 @@
 #define _PLAYERBOT_RAIDULDUARACTIONS_H
 
 #include "Action.h"
-#include "MovementActions.h"
 #include "AttackAction.h"
 #include "GenericActions.h"
+#include "GenericSpellActions.h"
+#include "MovementActions.h"
 #include "PlayerbotAI.h"
 #include "Playerbots.h"
-#include "RaidUlduarScripts.h"
 #include "RaidUlduarBossHelper.h"
+#include "Vehicle.h"
 
-// just for test
-// class TryToGetBossAIAction : public Action
-// {
-// public: 
-//     TryToGetBossAIAction(PlayerbotAI* ai) : Action(ai, "try to get boss ai") {}
+class FlameLeviathanVehicleAction : public MovementAction
+{
+public:
+    FlameLeviathanVehicleAction(PlayerbotAI* botAI) : MovementAction(botAI, "flame leviathan vehicle") {}
+    bool Execute(Event event) override;
 
-// public:
-//     virtual bool Execute(Event event);
-// };
+protected:
+    bool MoveAvoidChasing(Unit* target);
+    bool DemolisherAction(Unit* target);
+    bool DemolisherTurretAction(Unit* target);
+    bool SiegeEngineAction(Unit* target);
+    bool SiegeEngineTurretAction(Unit* target);
+    bool ChopperAction(Unit* target);
+    Unit* GetAttacker();
+    Unit* vehicleBase_;
+    Vehicle* vehicle_;
+    int avoidChaseIdx = -1;
+};
+
+class FlameLeviathanEnterVehicleAction : public MovementAction
+{
+public:
+    FlameLeviathanEnterVehicleAction(PlayerbotAI* botAI) : MovementAction(botAI, "flame leviathan enter vehicle") {}
+    bool Execute(Event event);
+
+protected:
+    bool EnterVehicle(Unit* vehicleBase, bool moveIfFar);
+    bool ShouldEnter(Unit* vehicleBase);
+    bool AllMainVehiclesOnUse();
+};
 
 #endif

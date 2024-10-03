@@ -1,8 +1,10 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it and/or modify it under version 2 of the License, or (at your option), any later version.
+ * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it
+ * and/or modify it under version 2 of the License, or (at your option), any later version.
  */
 
 #include "PassiveMultiplier.h"
+
 #include "Action.h"
 #include "AiObjectContext.h"
 
@@ -22,6 +24,7 @@ PassiveMultiplier::PassiveMultiplier(PlayerbotAI* botAI) : Multiplier(botAI, "pa
     if (allowedParts.empty())
     {
         allowedParts.push_back("follow");
+        allowedParts.push_back("move from group");
         allowedParts.push_back("stay");
         allowedParts.push_back("chat shortcut");
     }
@@ -30,7 +33,7 @@ PassiveMultiplier::PassiveMultiplier(PlayerbotAI* botAI) : Multiplier(botAI, "pa
 float PassiveMultiplier::GetValue(Action* action)
 {
     if (!action)
-		return 1.0f;
+        return 1.0f;
 
     std::string const name = action->getName();
 
