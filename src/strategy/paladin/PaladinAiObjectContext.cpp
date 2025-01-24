@@ -25,6 +25,7 @@ public:
         creators["boost"] = &PaladinStrategyFactoryInternal::boost;
         creators["cc"] = &PaladinStrategyFactoryInternal::cc;
         creators["bthreat"] = &PaladinStrategyFactoryInternal::bthreat;
+        creators["healer dps"] = &PaladinStrategyFactoryInternal::healer_dps;
     }
 
 private:
@@ -33,6 +34,7 @@ private:
     static Strategy* boost(PlayerbotAI* botAI) { return new PaladinBoostStrategy(botAI); }
     static Strategy* cc(PlayerbotAI* botAI) { return new PaladinCcStrategy(botAI); }
     static Strategy* bthreat(PlayerbotAI* botAI) { return new PaladinBuffThreatStrategy(botAI); }
+    static Strategy* healer_dps(PlayerbotAI* botAI) { return new PaladinHealerDpsStrategy(botAI); }
 };
 
 class PaladinResistanceStrategyFactoryInternal : public NamedObjectContext<Strategy>
@@ -46,6 +48,7 @@ public:
         creators["baoe"] = &PaladinResistanceStrategyFactoryInternal::baoe;
         creators["barmor"] = &PaladinResistanceStrategyFactoryInternal::barmor;
         creators["bcast"] = &PaladinResistanceStrategyFactoryInternal::bcast;
+        creators["bspeed"] = &PaladinResistanceStrategyFactoryInternal::bspeed;
     }
 
 private:
@@ -55,6 +58,7 @@ private:
     static Strategy* baoe(PlayerbotAI* botAI) { return new PaladinBuffAoeStrategy(botAI); }
     static Strategy* barmor(PlayerbotAI* botAI) { return new PaladinBuffArmorStrategy(botAI); }
     static Strategy* bcast(PlayerbotAI* botAI) { return new PaladinBuffCastStrategy(botAI); }
+    static Strategy* bspeed(PlayerbotAI* botAI) { return new PaladinBuffSpeedStrategy(botAI); }
 };
 
 class PaladinBuffStrategyFactoryInternal : public NamedObjectContext<Strategy>

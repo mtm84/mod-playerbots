@@ -459,6 +459,16 @@ protected:
     float balance;
 };
 
+class HealerShouldAttackTrigger : public Trigger
+{
+public:
+    HealerShouldAttackTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "healer should attack", 1)
+    {
+    }
+
+    bool IsActive() override;
+};
 
 class RandomTrigger : public Trigger
 {
@@ -608,8 +618,8 @@ public:
     {
     }
 
-    std::string const GetTargetName() { return "self target"; }
-    virtual bool IsActive();
+    std::string const GetTargetName() override { return "self target"; }
+    bool IsActive() override;
 
 private:
     int stack;

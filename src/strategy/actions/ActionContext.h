@@ -62,6 +62,7 @@
 #include "VehicleActions.h"
 #include "WorldBuffAction.h"
 #include "XpGainAction.h"
+#include "NewRpgAction.h"
 
 class PlayerbotAI;
 
@@ -94,6 +95,7 @@ public:
         creators["avoid aoe"] = &ActionContext::avoid_aoe;
         creators["combat formation move"] = &ActionContext::combat_formation_move;
         creators["tank face"] = &ActionContext::tank_face;
+        creators["rear flank"] = &ActionContext::rear_flank;
         creators["disperse set"] = &ActionContext::disperse_set;
         creators["gift of the naaru"] = &ActionContext::gift_of_the_naaru;
         creators["shoot"] = &ActionContext::shoot;
@@ -239,6 +241,12 @@ public:
 
         creators["toggle pet spell"] = &ActionContext::toggle_pet_spell;
         creators["pet attack"] = &ActionContext::pet_attack; 
+
+        creators["new rpg status update"] = &ActionContext::new_rpg_status_update;
+        creators["new rpg go grind"] = &ActionContext::new_rpg_go_grind;
+        creators["new rpg go innkeeper"] = &ActionContext::new_rpg_go_innkeeper;
+        creators["new rpg move random"] = &ActionContext::new_rpg_move_random;
+        creators["new rpg move npc"] = &ActionContext::new_rpg_move_npc;
     }
 
 private:
@@ -278,6 +286,7 @@ private:
     static Action* avoid_aoe(PlayerbotAI* botAI) { return new AvoidAoeAction(botAI); }
     static Action* combat_formation_move(PlayerbotAI* botAI) { return new CombatFormationMoveAction(botAI); }
     static Action* tank_face(PlayerbotAI* botAI) { return new TankFaceAction(botAI); }
+    static Action* rear_flank(PlayerbotAI* botAI) { return new RearFlankAction(botAI); }
     static Action* disperse_set(PlayerbotAI* botAI) { return new DisperseSetAction(botAI); }
     static Action* gift_of_the_naaru(PlayerbotAI* botAI) { return new CastGiftOfTheNaaruAction(botAI); }
     static Action* lifeblood(PlayerbotAI* botAI) { return new CastLifeBloodAction(botAI); }
@@ -413,6 +422,12 @@ private:
 
     static Action* toggle_pet_spell(PlayerbotAI* ai) { return new TogglePetSpellAutoCastAction(ai); }
     static Action* pet_attack(PlayerbotAI* ai) { return new PetAttackAction(ai); }
+
+    static Action* new_rpg_status_update(PlayerbotAI* ai) { return new NewRpgStatusUpdateAction(ai); }
+    static Action* new_rpg_go_grind(PlayerbotAI* ai) { return new NewRpgGoGrindAction(ai); }
+    static Action* new_rpg_go_innkeeper(PlayerbotAI* ai) { return new NewRpgGoInnKeeperAction(ai); }
+    static Action* new_rpg_move_random(PlayerbotAI* ai) { return new NewRpgMoveRandomAction(ai); }
+    static Action* new_rpg_move_npc(PlayerbotAI* ai) { return new NewRpgMoveNpcAction(ai); }
 };
 
 #endif

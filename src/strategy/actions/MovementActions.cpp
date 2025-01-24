@@ -41,6 +41,7 @@
 #include "Unit.h"
 #include "Vehicle.h"
 #include "WaypointMovementGenerator.h"
+#include "Corpse.h"
 
 MovementAction::MovementAction(PlayerbotAI* botAI, std::string const name) : Action(botAI, name)
 {
@@ -176,7 +177,7 @@ bool MovementAction::MoveToLOS(WorldObject* target, bool ranged)
 }
 
 bool MovementAction::MoveTo(uint32 mapId, float x, float y, float z, bool idle, bool react, bool normal_only,
-                            bool exact_waypoint, MovementPriority priority)
+                            bool exact_waypoint, MovementPriority priority, bool lessDelay, bool backwards)
 {
     UpdateMovementState();
     if (!IsMovingAllowed(mapId, x, y, z))
@@ -207,8 +208,20 @@ bool MovementAction::MoveTo(uint32 mapId, float x, float y, float z, bool idle, 
         {
             MotionMaster& mm = *vehicleBase->GetMotionMaster();  // need to move vehicle, not bot
             mm.Clear();
-            mm.MovePoint(0, x, y, z, generatePath);
-            float delay = 1000.0f * (distance / vehicleBase->GetSpeed(MOVE_RUN));
+            if (!backwards)
+            {
+                mm.MovePoint(0, x, y, z, generatePath);
+            }
+            else
+            {
+                mm.MovePointBackwards(0, x, y, z, generatePath);
+            }
+            float speed = backwards ? vehicleBase->GetSpeed(MOVE_RUN_BACK) : vehicleBase->GetSpeed(MOVE_RUN);
+            float delay = 1000.0f * (distance / speed);
+            if (lessDelay)
+            {
+                delay -= botAI->GetReactDelay();
+            }
             delay = std::max(.0f, delay);
             delay = std::min((float)sPlayerbotAIConfig->maxWaitForMove, delay);
             AI_VALUE(LastMovement&, "last movement").Set(mapId, x, y, z, bot->GetOrientation(), delay, priority);
@@ -223,15 +236,26 @@ bool MovementAction::MoveTo(uint32 mapId, float x, float y, float z, bool idle, 
             if (bot->IsSitState())
                 bot->SetStandState(UNIT_STAND_STATE_STAND);
 
-            if (bot->IsNonMeleeSpellCast(true))
-            {
-                bot->CastStop();
-                botAI->InterruptSpell();
-            }
+            // if (bot->IsNonMeleeSpellCast(true))
+            // {
+            //     bot->CastStop();
+            //     botAI->InterruptSpell();
+            // }
             MotionMaster& mm = *bot->GetMotionMaster();
             mm.Clear();
-            mm.MovePoint(0, x, y, z, generatePath);
-            float delay = 1000.0f * MoveDelay(distance);
+            if (!backwards)
+            {
+                mm.MovePoint(0, x, y, z, generatePath);
+            }
+            else
+            {
+                mm.MovePointBackwards(0, x, y, z, generatePath);
+            }
+            float delay = 1000.0f * MoveDelay(distance, backwards);
+            if (lessDelay)
+            {
+                delay -= botAI->GetReactDelay();
+            }
             delay = std::max(.0f, delay);
             delay = std::min((float)sPlayerbotAIConfig->maxWaitForMove, delay);
             AI_VALUE(LastMovement&, "last movement").Set(mapId, x, y, z, bot->GetOrientation(), delay, priority);
@@ -253,16 +277,27 @@ bool MovementAction::MoveTo(uint32 mapId, float x, float y, float z, bool idle, 
             if (bot->IsSitState())
                 bot->SetStandState(UNIT_STAND_STATE_STAND);
 
-            if (bot->IsNonMeleeSpellCast(true))
-            {
-                bot->CastStop();
-                botAI->InterruptSpell();
-            }
+            // if (bot->IsNonMeleeSpellCast(true))
+            // {
+            //     bot->CastStop();
+            //     botAI->InterruptSpell();
+            // }
             MotionMaster& mm = *bot->GetMotionMaster();
             G3D::Vector3 endP = path.back();
             mm.Clear();
-            mm.MovePoint(0, endP.x, endP.y, endP.z, generatePath);
-            float delay = 1000.0f * MoveDelay(distance);
+            if (!backwards)
+            {
+                mm.MovePoint(0, x, y, z, generatePath);
+            }
+            else
+            {
+                mm.MovePointBackwards(0, x, y, z, generatePath);
+            }
+            float delay = 1000.0f * MoveDelay(distance, backwards);
+            if (lessDelay)
+            {
+                delay -= botAI->GetReactDelay();
+            }
             delay = std::max(.0f, delay);
             delay = std::min((float)sPlayerbotAIConfig->maxWaitForMove, delay);
             AI_VALUE(LastMovement&, "last movement").Set(mapId, x, y, z, bot->GetOrientation(), delay, priority);
@@ -821,22 +856,23 @@ bool MovementAction::ReachCombatTo(Unit* target, float distance)
     PathGenerator path(bot);
     path.CalculatePath(tx, ty, tz, false);
     PathType type = path.GetPathType();
-    int typeOk = PATHFIND_NORMAL | PATHFIND_INCOMPLETE;
+    int typeOk = PATHFIND_NORMAL | PATHFIND_INCOMPLETE | PATHFIND_SHORTCUT;
     if (!(type & typeOk))
         return false;
     float shortenTo = distance;
 
     // Avoid walking too far when moving towards each other
-    if (bot->GetDistance(tx, ty, tz) >= 10.0f)
-        shortenTo = std::max(distance, bot->GetDistance(tx, ty, tz) / 2);
+    float disToGo = bot->GetExactDist(tx, ty, tz) - distance;
+    if (disToGo >= 10.0f)
+        shortenTo = disToGo / 2 + distance;
 
-    if (bot->GetExactDist(tx, ty, tz) <= shortenTo)
-        return false;
+    // if (bot->GetExactDist(tx, ty, tz) <= shortenTo)
+    //     return false;
 
     path.ShortenPathUntilDist(G3D::Vector3(tx, ty, tz), shortenTo);
     G3D::Vector3 endPos = path.GetPath().back();
     return MoveTo(target->GetMapId(), endPos.x, endPos.y, endPos.z, false, false, false, false,
-                  MovementPriority::MOVEMENT_COMBAT);
+                  MovementPriority::MOVEMENT_COMBAT, true);
 }
 
 float MovementAction::GetFollowAngle()
@@ -921,10 +957,10 @@ bool MovementAction::IsMovingAllowed()
     if (botAI->IsInVehicle() && !botAI->IsInVehicle(true))
         return false;
 
-    if (bot->isFrozen() || bot->IsPolymorphed() || (bot->isDead() && !bot->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST)) ||
-        bot->IsBeingTeleported() || bot->isInRoots() || bot->HasAuraType(SPELL_AURA_SPIRIT_OF_REDEMPTION) ||
-        bot->HasAuraType(SPELL_AURA_MOD_CONFUSE) || bot->IsCharmed() || bot->HasAuraType(SPELL_AURA_MOD_STUN) ||
-        bot->HasUnitState(UNIT_STATE_IN_FLIGHT) || bot->HasUnitState(UNIT_STATE_LOST_CONTROL))
+    if (bot->isFrozen() || bot->IsPolymorphed() || (bot->isDead() && !bot->HasPlayerFlag(PLAYER_FLAGS_GHOST)) ||
+        bot->IsBeingTeleported() || bot->HasRootAura() || bot->HasSpiritOfRedemptionAura() ||
+        bot->HasConfuseAura() || bot->IsCharmed() || bot->HasStunAura() ||
+        bot->IsInFlight() || bot->HasUnitState(UNIT_STATE_LOST_CONTROL))
         return false;
 
     if (bot->GetMotionMaster()->GetMotionSlotType(MOTION_SLOT_CONTROLLED) != NULL_MOTION_TYPE)
@@ -1251,20 +1287,20 @@ bool MovementAction::ChaseTo(WorldObject* obj, float distance, float angle)
     return true;
 }
 
-float MovementAction::MoveDelay(float distance)
+float MovementAction::MoveDelay(float distance, bool backwards)
 {
     float speed;
     if (bot->isSwimming())
     {
-        speed = bot->GetSpeed(MOVE_SWIM);
+        speed = backwards ? bot->GetSpeed(MOVE_SWIM_BACK) : bot->GetSpeed(MOVE_SWIM);
     }
     else if (bot->IsFlying())
     {
-        speed = bot->GetSpeed(MOVE_FLIGHT);
+        speed = backwards ? bot->GetSpeed(MOVE_FLIGHT_BACK) : bot->GetSpeed(MOVE_FLIGHT);
     }
     else
     {
-        speed = bot->GetSpeed(MOVE_RUN);
+        speed = backwards ? bot->GetSpeed(MOVE_RUN_BACK) :bot->GetSpeed(MOVE_RUN);
     }
     float delay = distance / speed;
     return delay;
@@ -1486,7 +1522,7 @@ void MovementAction::ClearIdleState()
     context->GetValue<PositionMap&>("position")->Get()["random"].Reset();
 }
 
-bool MovementAction::MoveAway(Unit* target, float distance)
+bool MovementAction::MoveAway(Unit* target, float distance, bool backwards)
 {
     if (!target)
     {
@@ -1509,7 +1545,7 @@ bool MovementAction::MoveAway(Unit* target, float distance)
             dz = bot->GetPositionZ();
             exact = false;
         }
-        if (MoveTo(target->GetMapId(), dx, dy, dz, false, false, true, exact, MovementPriority::MOVEMENT_COMBAT))
+        if (MoveTo(target->GetMapId(), dx, dy, dz, false, false, true, exact, MovementPriority::MOVEMENT_COMBAT, false, backwards))
         {
             return true;
         }
@@ -1531,7 +1567,7 @@ bool MovementAction::MoveAway(Unit* target, float distance)
             dz = bot->GetPositionZ();
             exact = false;
         }
-        if (MoveTo(target->GetMapId(), dx, dy, dz, false, false, true, exact, MovementPriority::MOVEMENT_COMBAT))
+        if (MoveTo(target->GetMapId(), dx, dy, dz, false, false, true, exact, MovementPriority::MOVEMENT_COMBAT, false, backwards))
         {
             return true;
         }
@@ -1732,7 +1768,7 @@ const Movement::PointsArray MovementAction::SearchForBestPath(float x, float y, 
 bool FleeAction::Execute(Event event)
 {
     // return Flee(AI_VALUE(Unit*, "current target"));
-    return MoveAway(AI_VALUE(Unit*, "current target"));
+    return MoveAway(AI_VALUE(Unit*, "current target"), sPlayerbotAIConfig->fleeDistance, true);
 }
 
 bool FleeAction::isUseful()
@@ -2011,8 +2047,15 @@ Position MovementAction::BestPositionForMeleeToFlee(Position pos, float radius)
         }
         bool strict = checkAngle.strict;
         float fleeDis = std::min(radius + 1.0f, sPlayerbotAIConfig->fleeDistance);
-        Position fleePos{bot->GetPositionX() + cos(angle) * fleeDis, bot->GetPositionY() + sin(angle) * fleeDis,
-                         bot->GetPositionZ()};
+        float dx = bot->GetPositionX() + cos(angle) * fleeDis;
+        float dy = bot->GetPositionY() + sin(angle) * fleeDis;
+        float dz = bot->GetPositionZ();
+        if (!bot->GetMap()->CheckCollisionAndGetValidCoords(bot, bot->GetPositionX(), bot->GetPositionY(),
+                                                            bot->GetPositionZ(), dx, dy, dz))
+        {
+            continue;
+        }
+        Position fleePos{dx, dy, dz};
         if (strict && currentTarget &&
             fleePos.GetExactDist(currentTarget) - currentTarget->GetCombatReach() >
                 sPlayerbotAIConfig->tooCloseDistance &&
@@ -2067,8 +2110,15 @@ Position MovementAction::BestPositionForRangedToFlee(Position pos, float radius)
         }
         bool strict = checkAngle.strict;
         float fleeDis = std::min(radius + 1.0f, sPlayerbotAIConfig->fleeDistance);
-        Position fleePos{bot->GetPositionX() + cos(angle) * fleeDis, bot->GetPositionY() + sin(angle) * fleeDis,
-                         bot->GetPositionZ()};
+        float dx = bot->GetPositionX() + cos(angle) * fleeDis;
+        float dy = bot->GetPositionY() + sin(angle) * fleeDis;
+        float dz = bot->GetPositionZ();
+        if (!bot->GetMap()->CheckCollisionAndGetValidCoords(bot, bot->GetPositionX(), bot->GetPositionY(),
+                                                            bot->GetPositionZ(), dx, dy, dz))
+        {
+            continue;
+        }
+        Position fleePos{dx, dy, dz};
         if (strict && currentTarget &&
             fleePos.GetExactDist(currentTarget) - currentTarget->GetCombatReach() > sPlayerbotAIConfig->spellDistance)
         {
@@ -2080,6 +2130,7 @@ Position MovementAction::BestPositionForRangedToFlee(Position pos, float radius)
         {
             continue;
         }
+
         if (pos.GetExactDist(fleePos) > farestDis)
         {
             farestDis = pos.GetExactDist(fleePos);
@@ -2093,8 +2144,13 @@ Position MovementAction::BestPositionForRangedToFlee(Position pos, float radius)
     return Position();
 }
 
-bool MovementAction::FleePosition(Position pos, float radius)
+bool MovementAction::FleePosition(Position pos, float radius, uint32 minInterval)
 {
+    std::list<FleeInfo>& infoList = AI_VALUE(std::list<FleeInfo>&, "recently flee info");
+
+    if (!infoList.empty() && infoList.back().timestamp + minInterval > getMSTime())
+        return false;
+
     Position bestPos;
     if (botAI->IsMelee(bot))
     {
@@ -2109,7 +2165,6 @@ bool MovementAction::FleePosition(Position pos, float radius)
         if (MoveTo(bot->GetMapId(), bestPos.GetPositionX(), bestPos.GetPositionY(), bestPos.GetPositionZ(), false,
                    false, true, false, MovementPriority::MOVEMENT_COMBAT))
         {
-            std::list<FleeInfo>& infoList = AI_VALUE(std::list<FleeInfo>&, "recently flee info");
             uint32 curTS = getMSTime();
             while (!infoList.empty())
             {
@@ -2313,7 +2368,7 @@ bool TankFaceAction::Execute(Event event)
     if (!bot->GetGroup())
         return false;
 
-    if (!bot->IsWithinMeleeRange(target))
+    if (!bot->IsWithinMeleeRange(target) || target->isMoving())
         return false;
 
     if (!AI_VALUE2(bool, "has aggro", "current target"))
@@ -2369,6 +2424,46 @@ bool TankFaceAction::Execute(Event event)
         return false;
     Position nearest = GetNearestPosition(availablePos);
     return MoveTo(bot->GetMapId(), nearest.GetPositionX(), nearest.GetPositionY(), nearest.GetPositionZ(), false, false, false, true, MovementPriority::MOVEMENT_COMBAT);
+}
+
+bool RearFlankAction::isUseful()
+{
+    Unit* target = AI_VALUE(Unit*, "current target");
+    if (!target) { return false; }
+
+    // Need to double the front angle check to account for mirrored angle.
+    bool inFront = target->HasInArc(2.f * minAngle, bot);
+    // Rear check does not need to double this angle as the logic is inverted
+    // and we are subtracting from 2pi.
+    bool inRear = !target->HasInArc((2.f * M_PI) - maxAngle, bot);
+
+    return inFront || inRear;
+}
+
+bool RearFlankAction::Execute(Event event)
+{
+    Unit* target = AI_VALUE(Unit*, "current target");
+    if (!target) { return false; }
+
+    float angle = frand(minAngle, maxAngle);
+    float baseDistance = bot->GetMeleeRange(target) * 0.5f;
+    Position leftFlank = target->GetPosition();
+    Position rightFlank = target->GetPosition();
+    Position* destination = nullptr;
+    leftFlank.RelocatePolarOffset(angle, baseDistance + distance);
+    rightFlank.RelocatePolarOffset(-angle, baseDistance + distance);
+
+    if (bot->GetExactDist2d(leftFlank) < bot->GetExactDist2d(rightFlank))
+    {
+        destination = &leftFlank;
+    }
+    else
+    {
+        destination = &rightFlank;
+    }
+    
+    return MoveTo(bot->GetMapId(), destination->GetPositionX(), destination->GetPositionY(), destination->GetPositionZ(),
+                  false, false, false, true, MovementPriority::MOVEMENT_COMBAT);
 }
 
 bool DisperseSetAction::Execute(Event event)
@@ -2495,9 +2590,9 @@ bool SetFacingTargetAction::isUseful() { return !AI_VALUE2(bool, "facing", "curr
 
 bool SetFacingTargetAction::isPossible()
 {
-    if (bot->isFrozen() || bot->IsPolymorphed() || (bot->isDead() && !bot->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST)) ||
-        bot->IsBeingTeleported() || bot->HasAuraType(SPELL_AURA_MOD_CONFUSE) || bot->IsCharmed() ||
-        bot->HasAuraType(SPELL_AURA_MOD_STUN) || bot->HasUnitState(UNIT_STATE_IN_FLIGHT) ||
+    if (bot->isFrozen() || bot->IsPolymorphed() || (bot->isDead() && !bot->HasPlayerFlag(PLAYER_FLAGS_GHOST)) ||
+        bot->IsBeingTeleported() || bot->HasConfuseAura() || bot->IsCharmed() ||
+        bot->HasStunAura() || bot->IsInFlight() ||
         bot->HasUnitState(UNIT_STATE_LOST_CONTROL))
         return false;
 
@@ -2513,7 +2608,7 @@ bool SetBehindTargetAction::Execute(Event event)
     if (target->GetVictim() == bot)
         return false;
 
-    if (!bot->IsWithinMeleeRange(target))
+    if (!bot->IsWithinMeleeRange(target) || target->isMoving())
         return false;
 
     float deltaAngle = Position::NormalizeOrientation(target->GetOrientation() - target->GetAngle(bot));

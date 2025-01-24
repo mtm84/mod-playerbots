@@ -18,6 +18,9 @@ class Unit;
 class WorldObject;
 class Position;
 
+#define ANGLE_45_DEG (static_cast<float>(M_PI) / 4.f)
+#define ANGLE_90_DEG M_PI_2
+#define ANGLE_120_DEG (2.f * static_cast<float>(M_PI) / 3.f)
 
 class MovementAction : public Action
 {
@@ -29,7 +32,7 @@ protected:
     bool MoveNear(uint32 mapId, float x, float y, float z, float distance = sPlayerbotAIConfig->contactDistance, MovementPriority priority = MovementPriority::MOVEMENT_NORMAL);
     bool MoveToLOS(WorldObject* target, bool ranged = false);
     bool MoveTo(uint32 mapId, float x, float y, float z, bool idle = false, bool react = false,
-                bool normal_only = false, bool exact_waypoint = false, MovementPriority priority = MovementPriority::MOVEMENT_NORMAL);
+                bool normal_only = false, bool exact_waypoint = false, MovementPriority priority = MovementPriority::MOVEMENT_NORMAL, bool lessDelay = false, bool backwards = false);
     bool MoveTo(WorldObject* target, float distance = 0.0f, MovementPriority priority = MovementPriority::MOVEMENT_NORMAL);
     bool MoveNear(WorldObject* target, float distance = sPlayerbotAIConfig->contactDistance, MovementPriority priority = MovementPriority::MOVEMENT_NORMAL);
     float GetFollowAngle();
@@ -37,7 +40,7 @@ protected:
     bool Follow(Unit* target, float distance, float angle);
     bool ChaseTo(WorldObject* obj, float distance = 0.0f, float angle = 0.0f);
     bool ReachCombatTo(Unit* target, float distance = 0.0f);
-    float MoveDelay(float distance);
+    float MoveDelay(float distance, bool backwards = false);
     void WaitForReach(float distance);
     void SetNextMovementDelay(float delayMillis);
     bool IsMovingAllowed(WorldObject* target);
@@ -48,14 +51,14 @@ protected:
     bool Flee(Unit* target);
     void ClearIdleState();
     void UpdateMovementState();
-    bool MoveAway(Unit* target, float distance = sPlayerbotAIConfig -> fleeDistance);
+    bool MoveAway(Unit* target, float distance = sPlayerbotAIConfig -> fleeDistance, bool backwards = false);
     bool MoveFromGroup(float distance);
     bool Move(float angle, float distance);
     bool MoveInside(uint32 mapId, float x, float y, float z, float distance = sPlayerbotAIConfig->followDistance, MovementPriority priority = MovementPriority::MOVEMENT_NORMAL);
     void CreateWp(Player* wpOwner, float x, float y, float z, float o, uint32 entry, bool important = false);
     Position BestPositionForMeleeToFlee(Position pos, float radius);
     Position BestPositionForRangedToFlee(Position pos, float radius);
-    bool FleePosition(Position pos, float radius);
+    bool FleePosition(Position pos, float radius, uint32 minInterval = 1000);
     bool CheckLastFlee(float curAngle, std::list<FleeInfo>& infoList);
 
 protected:
@@ -142,6 +145,27 @@ public:
     TankFaceAction(PlayerbotAI* botAI) : CombatFormationMoveAction(botAI, "tank face") {}
 
     bool Execute(Event event) override;
+};
+
+class RearFlankAction : public MovementAction
+{
+// 90 degree minimum angle prevents any frontal cleaves/breaths and avoids parry-hasting the boss.
+// 120 degree maximum angle leaves a 120 degree symmetrical cone at the tail end which is usually enough to avoid tail swipes.
+// Some dragons or mobs may have different danger zone angles, override if needed.
+public:
+    RearFlankAction(PlayerbotAI* botAI, float distance = 0.0f, float minAngle = ANGLE_90_DEG, float maxAngle = ANGLE_120_DEG)
+        : MovementAction(botAI, "rear flank")
+        {
+            this->distance = distance;
+            this->minAngle = minAngle;
+            this->maxAngle = maxAngle;
+        }
+
+    bool Execute(Event event) override;
+    bool isUseful() override;
+
+protected:
+    float distance, minAngle, maxAngle;
 };
 
 class DisperseSetAction : public Action
@@ -268,4 +292,5 @@ public:
 
     bool Execute(Event event) override;
 };
+
 #endif
